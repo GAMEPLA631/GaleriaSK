@@ -190,7 +190,7 @@
                     <div class="flex items-center gap-4 text-slate-400">
                         <span class="flex items-center gap-1.5"><i data-lucide="database" class="w-4 h-4"></i> IndexedDB</span>
                         <span class="w-1 h-1 bg-slate-700 rounded-full"></span>
-                        <span class="flex items-center gap-1.5"><i data-lucide="infinity" class="w-4 h-4"></i> Bez limitu</span>
+                        <span class="flex items-center gap-1.5"><i data-lucide="layers" class="w-4 h-4"></i> Hromadný nahrávanie</span>
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-4 relative z-10 w-full lg:w-auto">
@@ -199,9 +199,9 @@
                         <span>Nový text</span>
                     </button>
                     <label class="flex-1 lg:flex-none btn-primary px-8 py-5 rounded-2xl cursor-pointer font-bold text-center flex items-center justify-center gap-3 group">
-                        <i data-lucide="plus-circle" class="w-6 h-6 group-hover:rotate-90 transition-transform"></i>
-                        <span>Nahrať súbor</span>
-                        <input type="file" id="file-upload" class="hidden" onchange="handleFileUpload(event)">
+                        <i data-lucide="upload-cloud" class="w-6 h-6 group-hover:-translate-y-1 transition-transform"></i>
+                        <span>Nahrať hromadne</span>
+                        <input type="file" id="file-upload" class="hidden" multiple onchange="handleFileUpload(event)">
                     </label>
                 </div>
                 <!-- Dekoratívny element -->
@@ -359,26 +359,46 @@
 
         // --- FILES & NOTES ---
         async function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const data = {
-                    owner: currentUser.username,
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    content: ev.target.result,
-                    timestamp: Date.now()
-                };
-                const tx = db.transaction('files', 'readwrite');
-                tx.objectStore('files').add(data);
-                tx.oncomplete = () => { 
-                    showToast("Súbor bezpečne uložený!", "shield-check"); 
-                    loadFiles(); 
-                };
-            };
-            reader.readAsDataURL(file);
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+
+            showToast(`Pripravujem ${files.length} súborov na nahrávanie...`, "loader");
+
+            // Použijeme Promise.all na paralelné spracovanie súborov
+            const uploadPromises = Array.from(files).map(file => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const data = {
+                            owner: currentUser.username,
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            content: ev.target.result,
+                            timestamp: Date.now()
+                        };
+                        const tx = db.transaction('files', 'readwrite');
+                        const store = tx.objectStore('files');
+                        const addReq = store.add(data);
+                        addReq.onsuccess = () => resolve();
+                        addReq.onerror = () => reject();
+                    };
+                    reader.onerror = () => reject();
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            try {
+                await Promise.all(uploadPromises);
+                showToast(`Všetkých ${files.length} súborov bolo bezpečne uložených!`, "shield-check");
+                loadFiles();
+            } catch (err) {
+                showToast("Nastala chyba pri hromadnom nahrávaní súborov.");
+                console.error(err);
+            }
+            
+            // Vyčistenie inputu, aby bolo možné znova nahrať tie isté súbory
+            e.target.value = '';
         }
 
         function openTextModal() {
@@ -398,7 +418,6 @@
 
             if (!content) return showToast("Obsah poznámky nemôže byť prázdny!");
 
-            // Prevedieme text na DataURL, aby sme zachovali konzistenciu s ostatnými súbormi
             const blob = new Blob([content], { type: 'text/plain' });
             const reader = new FileReader();
             
@@ -451,6 +470,7 @@
         function renderFileCard(item) {
             const grid = document.getElementById('gallery-grid');
             const isImage = item.type.startsWith('image/');
+            const isVideo = item.type.startsWith('video/');
             const isText = item.type.startsWith('text/');
             const card = document.createElement('div');
             card.className = "glass glass-hover rounded-[2rem] overflow-hidden group transition-all duration-500 animate-slide-up";
@@ -458,6 +478,13 @@
             let previewContent = '';
             if (isImage) {
                 previewContent = `<img src="${item.content}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">`;
+            } else if (isVideo) {
+                previewContent = `
+                    <div class="flex flex-col items-center gap-3 group-hover:scale-110 transition-transform duration-500">
+                        <i data-lucide="play-circle" class="w-14 h-14 text-blue-400 opacity-60"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-blue-300">Video súbor</span>
+                    </div>
+                `;
             } else if (isText) {
                 previewContent = `
                     <div class="flex flex-col items-center gap-3 group-hover:scale-110 transition-transform duration-500">
@@ -505,7 +532,6 @@
                 const isText = item.type.startsWith('text/');
                 
                 if (isText) {
-                    // Pri texte skopírujeme priamo dekódovaný obsah
                     const base64 = item.content.split(',')[1];
                     const decoded = atob(base64);
                     const textArea = document.createElement("textarea");
@@ -516,7 +542,6 @@
                     document.body.removeChild(textArea);
                     showToast("Text poznámky skopírovaný!", "copy");
                 } else {
-                    // Pri iných súboroch skopírujeme DataURL
                     const textArea = document.createElement("textarea");
                     textArea.value = item.content;
                     document.body.appendChild(textArea);
@@ -553,15 +578,24 @@
             const toast = document.getElementById('toast');
             document.getElementById('toast-msg').textContent = msg;
             const iconContainer = document.getElementById('toast-icon');
-            iconContainer.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4"></i>`;
+            
+            if(iconName === "loader") {
+                iconContainer.innerHTML = `<div class="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>`;
+            } else {
+                iconContainer.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4"></i>`;
+            }
             lucide.createIcons();
             
             toast.classList.remove('hidden');
             setTimeout(() => toast.classList.add('opacity-100', 'scale-100'), 10);
+            
+            // Dlhšie zobrazenie pre hromadné nahrávanie
+            const duration = msg.includes("nahrávanie") ? 5000 : 3000;
+            
             setTimeout(() => {
                 toast.classList.remove('opacity-100', 'scale-100');
                 setTimeout(() => toast.classList.add('hidden'), 300);
-            }, 3000);
+            }, duration);
         }
     </script>
 </body>
