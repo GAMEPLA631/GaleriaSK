@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniVault | Ultra Moderná Globálna Galéria</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.5);
+            --accent: #8b5cf6;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #020617;
+            color: #f8fafc;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Moderný animovaný podklad */
+        .bg-mesh {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-hover:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transform: translateY(-4px);
+        }
+
+        .text-gradient {
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            box-shadow: 0 4px 15px var(--primary-glow);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 8px 25px var(--primary-glow);
+            transform: scale(1.02);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.6s ease-out forwards;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #020617; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+        input, textarea {
+            background: rgba(255, 255, 255, 0.03) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, textarea:focus {
+            border-color: var(--primary) !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+    </style>
+</head>
+<body class="custom-scrollbar">
+    <div class="bg-mesh"></div>
+
+    <!-- Navigácia -->
+    <nav class="sticky top-0 z-50 glass border-b border-white/5 px-8 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-3 group cursor-pointer">
+            <div class="w-11 h-11 bg-gradient-to-tr from-blue-600 to-violet-600 rounded-2xl flex items-center justify-center shadow-2xl group-hover:rotate-12 transition-transform duration-300">
+                <i data-lucide="shield" class="text-white w-6 h-6"></i>
+            </div>
+            <span class="text-2xl font-extrabold tracking-tighter">Omni<span class="text-gradient">Vault</span></span>
+        </div>
+        <div id="nav-user-info" class="hidden flex items-center gap-6">
+            <div class="flex flex-col items-end">
+                <span id="display-username" class="text-sm font-bold text-white"></span>
+                <span class="text-[10px] uppercase tracking-widest text-slate-500">Aktivovaný Profil</span>
+            </div>
+            <button onclick="logout()" class="p-2.5 bg-white/5 hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all border border-white/5">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-6 py-12">
+        
+        <!-- Auth Sekcia -->
+        <div id="auth-section" class="max-w-xl mx-auto space-y-8">
+            <!-- Login Card -->
+            <div id="login-card" class="glass p-10 rounded-[2.5rem] border-white/10 animate-slide-up">
+                <div class="mb-10">
+                    <h2 class="text-4xl font-extrabold mb-2">Vitajte</h2>
+                    <p class="text-slate-400">Vstúpte do svojho digitálneho trezoru.</p>
+                </div>
+                <div class="space-y-5">
+                    <div class="relative">
+                        <i data-lucide="user" class="absolute left-4 top-4 w-5 h-5 text-slate-500"></i>
+                        <input type="text" id="login-username" placeholder="Používateľské meno" class="w-full pl-12 pr-4 py-4 rounded-2xl focus:outline-none">
+                    </div>
+                    <div class="relative">
+                        <i data-lucide="lock" class="absolute left-4 top-4 w-5 h-5 text-slate-500"></i>
+                        <input type="password" id="login-password" placeholder="Heslo" class="w-full pl-12 pr-4 py-4 rounded-2xl focus:outline-none">
+                    </div>
+                    <button onclick="login()" class="w-full btn-primary text-white font-bold py-4 rounded-2xl mt-4">Prihlásiť sa</button>
+                    <p class="text-center text-sm text-slate-400 pt-6">Nováčik v OmniVault? <button onclick="toggleAuth(false)" class="text-blue-400 font-bold hover:text-blue-300 transition-colors">Vytvoriť profil</button></p>
+                </div>
+            </div>
+
+            <!-- Register Card -->
+            <div id="register-card" class="hidden glass p-10 rounded-[2.5rem] border-white/10 animate-slide-up">
+                <div class="mb-8">
+                    <h2 class="text-4xl font-extrabold mb-2">Registrácia</h2>
+                    <p class="text-slate-400">Nastavte si svoj globálny Omni profil.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="md:col-span-2">
+                        <input type="text" id="reg-name" placeholder="Celé meno" class="w-full px-5 py-4 rounded-2xl focus:outline-none">
+                    </div>
+                    <div>
+                        <input type="text" id="reg-username" placeholder="Username" class="w-full px-5 py-4 rounded-2xl focus:outline-none">
+                    </div>
+                    <div>
+                        <input type="email" id="reg-email" placeholder="Email" class="w-full px-5 py-4 rounded-2xl focus:outline-none">
+                    </div>
+                    <div>
+                        <input type="password" id="reg-pass" placeholder="Heslo" class="w-full px-5 py-4 rounded-2xl focus:outline-none">
+                    </div>
+                    <div>
+                        <input type="text" id="reg-country" placeholder="Krajina" class="w-full px-5 py-4 rounded-2xl focus:outline-none">
+                    </div>
+                    <div class="md:col-span-2">
+                        <textarea id="reg-bio" rows="2" placeholder="Krátke bio o vás..." class="w-full px-5 py-4 rounded-2xl focus:outline-none"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-slate-500 ml-2 mb-1">Dátum nar.</label>
+                        <input type="date" id="reg-dob" class="w-full px-5 py-4 rounded-2xl focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-slate-500 ml-2 mb-1">Telefón</label>
+                        <input type="tel" id="reg-phone" placeholder="+421..." class="w-full px-5 py-4 rounded-2xl focus:outline-none">
+                    </div>
+                </div>
+                <button onclick="register()" class="w-full btn-primary text-white font-bold py-4 mt-8 rounded-2xl">Vytvoriť účet</button>
+                <p class="text-center text-sm text-slate-400 pt-6">Máte už účet? <button onclick="toggleAuth(true)" class="text-blue-400 font-bold">Prihlásiť sa</button></p>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard-section" class="hidden space-y-12 animate-slide-up">
+            <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 bg-white/[0.02] p-8 lg:p-12 rounded-[3rem] border border-white/5 relative overflow-hidden">
+                <div class="relative z-10">
+                    <h1 class="text-5xl font-extrabold tracking-tight mb-4">Vaša <span class="text-gradient">Galéria</span></h1>
+                    <div class="flex items-center gap-4 text-slate-400">
+                        <span class="flex items-center gap-1.5"><i data-lucide="database" class="w-4 h-4"></i> IndexedDB</span>
+                        <span class="w-1 h-1 bg-slate-700 rounded-full"></span>
+                        <span class="flex items-center gap-1.5"><i data-lucide="infinity" class="w-4 h-4"></i> Bez limitu</span>
+                    </div>
+                </div>
+                <div class="flex gap-4 relative z-10 w-full lg:w-auto">
+                    <label class="flex-1 lg:flex-none btn-primary px-8 py-5 rounded-2xl cursor-pointer font-bold text-center flex items-center justify-center gap-3 group">
+                        <i data-lucide="plus-circle" class="w-6 h-6 group-hover:rotate-90 transition-transform"></i>
+                        <span>Nahrať čokoľvek</span>
+                        <input type="file" id="file-upload" class="hidden" onchange="handleFileUpload(event)">
+                    </label>
+                </div>
+                <!-- Dekoratívny element -->
+                <div class="absolute -right-20 -top-20 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full"></div>
+            </header>
+
+            <!-- Grid -->
+            <div id="gallery-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8">
+                <!-- Súbory sa načítajú sem -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden text-center py-32 glass rounded-[3rem]">
+                <div class="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i data-lucide="folder-open" class="w-10 h-10 text-slate-600"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-slate-300">Trezor je prázdny</h3>
+                <p class="text-slate-500 mt-2">Sem môžete uložiť obrázky, videá alebo dokumenty.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Notifikácie -->
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 glass px-8 py-4 rounded-2xl border-blue-500/30 hidden z-[100] transition-all transform opacity-0 scale-95 flex items-center gap-3 shadow-2xl">
+        <div id="toast-icon" class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+            <i data-lucide="info" class="w-4 h-4"></i>
+        </div>
+        <span id="toast-msg" class="font-medium text-sm"></span>
+    </div>
+
+    <script>
+        // Inicializácia ikon
+        lucide.createIcons();
+
+        // --- DATABASE ---
+        const DB_NAME = "OmniVault_Pro_DB";
+        const DB_VERSION = 1;
+        let db;
+
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'username' });
+            if (!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'id', autoIncrement: true });
+        };
+        request.onsuccess = (e) => { db = e.target.result; checkSession(); };
+
+        let currentUser = null;
+
+        function toggleAuth(showLogin) {
+            document.getElementById('login-card').classList.toggle('hidden', !showLogin);
+            document.getElementById('register-card').classList.toggle('hidden', showLogin);
+            lucide.createIcons();
+        }
+
+        async function register() {
+            const user = {
+                name: document.getElementById('reg-name').value,
+                username: document.getElementById('reg-username').value,
+                email: document.getElementById('reg-email').value,
+                pass: document.getElementById('reg-pass').value,
+                country: document.getElementById('reg-country').value,
+                bio: document.getElementById('reg-bio').value,
+                dob: document.getElementById('reg-dob').value,
+                phone: document.getElementById('reg-phone').value,
+                created: new Date().toISOString()
+            };
+            if (!user.username || !user.pass) return showToast("Meno a heslo sú povinné!");
+            const tx = db.transaction('users', 'readwrite');
+            try {
+                await tx.objectStore('users').add(user);
+                showToast("Účet vytvorený!", "check-circle");
+                toggleAuth(true);
+            } catch (e) { showToast("Meno je už obsadené."); }
+        }
+
+        async function login() {
+            const user = document.getElementById('login-username').value;
+            const pass = document.getElementById('login-password').value;
+            const req = db.transaction('users', 'readonly').objectStore('users').get(user);
+            req.onsuccess = () => {
+                if (req.result && req.result.pass === pass) {
+                    currentUser = req.result;
+                    localStorage.setItem('omni_session_v2', user);
+                    showDashboard();
+                } else showToast("Prístup zamietnutý!");
+            };
+        }
+
+        function logout() { localStorage.removeItem('omni_session_v2'); location.reload(); }
+
+        function checkSession() {
+            const saved = localStorage.getItem('omni_session_v2');
+            if (saved) {
+                const req = db.transaction('users', 'readonly').objectStore('users').get(saved);
+                req.onsuccess = () => { if (req.result) { currentUser = req.result; showDashboard(); } };
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            document.getElementById('nav-user-info').classList.remove('hidden');
+            document.getElementById('display-username').textContent = currentUser.name;
+            loadFiles();
+            lucide.createIcons();
+        }
+
+        // --- FILES ---
+        async function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const data = {
+                    owner: currentUser.username,
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    content: ev.target.result,
+                    timestamp: Date.now()
+                };
+                const tx = db.transaction('files', 'readwrite');
+                tx.objectStore('files').add(data);
+                tx.oncomplete = () => { showToast("Súbor bezpečne uložený!", "shield-check"); loadFiles(); };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadFiles() {
+            const grid = document.getElementById('gallery-grid');
+            const empty = document.getElementById('empty-state');
+            grid.innerHTML = '';
+            let count = 0;
+            db.transaction('files', 'readonly').objectStore('files').openCursor().onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    if (cursor.value.owner === currentUser.username) {
+                        count++;
+                        renderFileCard(cursor.value);
+                    }
+                    cursor.continue();
+                } else {
+                    empty.classList.toggle('hidden', count > 0);
+                    lucide.createIcons();
+                }
+            };
+        }
+
+        function renderFileCard(item) {
+            const grid = document.getElementById('gallery-grid');
+            const isImage = item.type.startsWith('image/');
+            const card = document.createElement('div');
+            card.className = "glass glass-hover rounded-[2rem] overflow-hidden group transition-all duration-500 animate-slide-up";
+            card.innerHTML = `
+                <div class="h-56 w-full bg-white/[0.02] relative flex items-center justify-center overflow-hidden border-b border-white/5">
+                    ${isImage ? `<img src="${item.content}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">` : 
+                    `<div class="flex flex-col items-center gap-3 opacity-20 group-hover:opacity-40 transition-opacity">
+                        <i data-lucide="file-text" class="w-12 h-12"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-widest">${item.type.split('/')[1] || 'FILE'}</span>
+                    </div>`}
+                    <div class="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-3 backdrop-blur-sm">
+                        <button onclick="copyToClipboard('${item.id}')" class="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all active:scale-90" title="Kopírovať obsah">
+                            <i data-lucide="copy" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="downloadFile('${item.id}')" class="p-3 bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 rounded-2xl transition-all active:scale-90" title="Stiahnuť">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="deleteFile(${item.id})" class="p-3 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded-2xl transition-all active:scale-90" title="Zmazať">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <h4 class="font-bold truncate text-sm mb-1">${item.name}</h4>
+                    <p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">${(item.size / 1024 / 1024).toFixed(2)} MB • ${new Date(item.timestamp).toLocaleDateString()}</p>
+                </div>
+            `;
+            grid.appendChild(card);
+        }
+
+        // --- FUNKCIA KOPÍROVANIA ---
+        async function copyToClipboard(id) {
+            const req = db.transaction('files', 'readonly').objectStore('files').get(Number(id));
+            req.onsuccess = () => {
+                const item = req.result;
+                // Skúsime skopírovať DataURL (obsah súboru)
+                const textArea = document.createElement("textarea");
+                textArea.value = item.content;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast("Obsah súboru (DataURL) skopírovaný!", "copy");
+                } catch (err) {
+                    showToast("Chyba pri kopírovaní.");
+                }
+                document.body.removeChild(textArea);
+            };
+        }
+
+        async function downloadFile(id) {
+            const req = db.transaction('files', 'readonly').objectStore('files').get(Number(id));
+            req.onsuccess = () => {
+                const a = document.createElement('a');
+                a.href = req.result.content;
+                a.download = req.result.name;
+                a.click();
+            };
+        }
+
+        async function downloadFile(id) {
+            const req = db.transaction('files', 'readonly').objectStore('files').get(Number(id));
+            req.onsuccess = () => {
+                const a = document.createElement('a');
+                a.href = req.result.content;
+                a.download = req.result.name;
+                a.click();
+            };
+        }
+
+        async function deleteFile(id) {
+            if(!confirm("Natrvalo odstrániť súbor z vášho trezoru?")) return;
+            const tx = db.transaction('files', 'readwrite');
+            tx.objectStore('files').delete(id);
+            tx.oncomplete = () => { showToast("Súbor vymazaný.", "trash"); loadFiles(); };
+        }
+
+        function showToast(msg, iconName = "info") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            const iconContainer = document.getElementById('toast-icon');
+            iconContainer.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4"></i>`;
+            lucide.createIcons();
+            
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('opacity-100', 'scale-100'), 10);
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'scale-100');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
