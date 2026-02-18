@@ -239,7 +239,10 @@
             if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'username' });
             if (!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'id', autoIncrement: true });
         };
-        request.onsuccess = (e) => { db = e.target.result; checkSession(); };
+        request.onsuccess = (e) => { 
+            db = e.target.result; 
+            checkSession(); 
+        };
 
         let currentUser = null;
 
@@ -249,7 +252,7 @@
             lucide.createIcons();
         }
 
-        async function register() {
+        function register() {
             const user = {
                 name: document.getElementById('reg-name').value,
                 username: document.getElementById('reg-username').value,
@@ -262,34 +265,60 @@
                 created: new Date().toISOString()
             };
             if (!user.username || !user.pass) return showToast("Meno a heslo sú povinné!");
+            
             const tx = db.transaction('users', 'readwrite');
-            try {
-                await tx.objectStore('users').add(user);
+            const store = tx.objectStore('users');
+            const req = store.add(user);
+
+            req.onsuccess = () => {
                 showToast("Účet vytvorený!", "check-circle");
                 toggleAuth(true);
-            } catch (e) { showToast("Meno je už obsadené."); }
-        }
+            };
 
-        async function login() {
-            const user = document.getElementById('login-username').value;
-            const pass = document.getElementById('login-password').value;
-            const req = db.transaction('users', 'readonly').objectStore('users').get(user);
-            req.onsuccess = () => {
-                if (req.result && req.result.pass === pass) {
-                    currentUser = req.result;
-                    localStorage.setItem('omni_session_v2', user);
-                    showDashboard();
-                } else showToast("Prístup zamietnutý!");
+            req.onerror = () => {
+                showToast("Používateľ už existuje alebo nastala chyba.");
             };
         }
 
-        function logout() { localStorage.removeItem('omni_session_v2'); location.reload(); }
+        function login() {
+            const user = document.getElementById('login-username').value;
+            const pass = document.getElementById('login-password').value;
+            
+            const tx = db.transaction('users', 'readonly');
+            const store = tx.objectStore('users');
+            const req = store.get(user);
+
+            req.onsuccess = () => {
+                const data = req.result;
+                if (data && data.pass === pass) {
+                    currentUser = data;
+                    localStorage.setItem('omni_session_v2', user);
+                    showDashboard();
+                } else {
+                    showToast("Prístup zamietnutý! Skontrolujte meno a heslo.");
+                }
+            };
+            
+            req.onerror = () => showToast("Chyba pri prihlasovaní.");
+        }
+
+        function logout() { 
+            localStorage.removeItem('omni_session_v2'); 
+            location.reload(); 
+        }
 
         function checkSession() {
             const saved = localStorage.getItem('omni_session_v2');
             if (saved) {
-                const req = db.transaction('users', 'readonly').objectStore('users').get(saved);
-                req.onsuccess = () => { if (req.result) { currentUser = req.result; showDashboard(); } };
+                const tx = db.transaction('users', 'readonly');
+                const store = tx.objectStore('users');
+                const req = store.get(saved);
+                req.onsuccess = () => { 
+                    if (req.result) { 
+                        currentUser = req.result; 
+                        showDashboard(); 
+                    } 
+                };
             }
         }
 
@@ -318,7 +347,10 @@
                 };
                 const tx = db.transaction('files', 'readwrite');
                 tx.objectStore('files').add(data);
-                tx.oncomplete = () => { showToast("Súbor bezpečne uložený!", "shield-check"); loadFiles(); };
+                tx.oncomplete = () => { 
+                    showToast("Súbor bezpečne uložený!", "shield-check"); 
+                    loadFiles(); 
+                };
             };
             reader.readAsDataURL(file);
         }
@@ -328,7 +360,12 @@
             const empty = document.getElementById('empty-state');
             grid.innerHTML = '';
             let count = 0;
-            db.transaction('files', 'readonly').objectStore('files').openCursor().onsuccess = (e) => {
+            
+            const tx = db.transaction('files', 'readonly');
+            const store = tx.objectStore('files');
+            const req = store.openCursor();
+
+            req.onsuccess = (e) => {
                 const cursor = e.target.result;
                 if (cursor) {
                     if (cursor.value.owner === currentUser.username) {
@@ -376,18 +413,17 @@
         }
 
         // --- FUNKCIA KOPÍROVANIA ---
-        async function copyToClipboard(id) {
+        function copyToClipboard(id) {
             const req = db.transaction('files', 'readonly').objectStore('files').get(Number(id));
             req.onsuccess = () => {
                 const item = req.result;
-                // Skúsime skopírovať DataURL (obsah súboru)
                 const textArea = document.createElement("textarea");
                 textArea.value = item.content;
                 document.body.appendChild(textArea);
                 textArea.select();
                 try {
                     document.execCommand('copy');
-                    showToast("Obsah súboru (DataURL) skopírovaný!", "copy");
+                    showToast("Obsah súboru skopírovaný!", "copy");
                 } catch (err) {
                     showToast("Chyba pri kopírovaní.");
                 }
@@ -395,7 +431,7 @@
             };
         }
 
-        async function downloadFile(id) {
+        function downloadFile(id) {
             const req = db.transaction('files', 'readonly').objectStore('files').get(Number(id));
             req.onsuccess = () => {
                 const a = document.createElement('a');
@@ -405,21 +441,15 @@
             };
         }
 
-        async function downloadFile(id) {
-            const req = db.transaction('files', 'readonly').objectStore('files').get(Number(id));
-            req.onsuccess = () => {
-                const a = document.createElement('a');
-                a.href = req.result.content;
-                a.download = req.result.name;
-                a.click();
-            };
-        }
-
-        async function deleteFile(id) {
+        function deleteFile(id) {
             if(!confirm("Natrvalo odstrániť súbor z vášho trezoru?")) return;
             const tx = db.transaction('files', 'readwrite');
-            tx.objectStore('files').delete(id);
-            tx.oncomplete = () => { showToast("Súbor vymazaný.", "trash"); loadFiles(); };
+            const store = tx.objectStore('files');
+            store.delete(id);
+            tx.oncomplete = () => { 
+                showToast("Súbor vymazaný.", "trash"); 
+                loadFiles(); 
+            };
         }
 
         function showToast(msg, iconName = "info") {
